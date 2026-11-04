@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "verify": "node --import tsx scripts/verify.ts"
+    "verify": "node --import tsx scripts/verify.ts",
+    "deploy:pages": "bash scripts/deploy-pages.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",

@@ -46,6 +46,17 @@ Ephemeris: [Astronomy Engine](https://github.com/cosinekitty/astronomy) (MIT; no
 Ephemeris licence needed). Geocoding: Open-Meteo (free, no key). Timezones: IANA via Luxon,
 including historical daylight saving rules.
 
+## Publish to GitHub Pages
+
+```bash
+npm run deploy:pages
+```
+
+This runs the calculation checks, builds a static copy of the site (without the AI reading API,
+which needs a server), and pushes it to the `gh-pages` branch. It goes live at
+https://laminedo.github.io/destiny-atlas/ a minute later. On the static site the Full Reading
+tab shows a "coming soon" note; everything else runs in the visitor's browser.
+
 ## Verify the math
 
 ```bash
