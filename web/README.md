@@ -48,14 +48,16 @@ including historical daylight saving rules.
 
 ## Publish to GitHub Pages
 
-```bash
-npm run deploy:pages
-```
+Every push to `main` runs `.github/workflows/pages.yml`: it runs the calculation checks, builds a
+static copy of the site (without the AI reading API, which needs a server), and deploys it to
+https://laminedo.github.io/destiny-atlas/. You can also start it by hand from the repository's
+Actions tab.
 
-This runs the calculation checks, builds a static copy of the site (without the AI reading API,
-which needs a server), and pushes it to the `gh-pages` branch. It goes live at
-https://laminedo.github.io/destiny-atlas/ a minute later. On the static site the Full Reading
-tab shows a "coming soon" note; everything else runs in the visitor's browser.
+To publish from your own machine instead (pushes to a `gh-pages` branch), run
+`npm run deploy:pages` and set Pages to "Deploy from a branch".
+
+On the static site the Full Reading tab shows a "coming soon" note; everything else runs in the
+visitor's browser.
 
 ## Verify the math
 
