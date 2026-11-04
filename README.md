@@ -8,5 +8,5 @@ numerology, Chinese Four Pillars, forecasts, compatibility, and a shareable cosm
 The app lives in [`web/`](web/). See [web/README.md](web/README.md) for features, setup, and how the
 calculations are verified.
 
-> The GitHub Pages site is static, so the AI-written readings are disabled there. Run the app locally
-> (or on a server such as Vercel) with an `ANTHROPIC_API_KEY` to enable them.
+> AI readings on the live site are written by Google Gemini using each visitor's own free API key,
+> which stays in their browser. Run the app with a server and an `ANTHROPIC_API_KEY` to use Claude.

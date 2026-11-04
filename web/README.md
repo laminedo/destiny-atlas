@@ -38,9 +38,15 @@ Everything except the AI-written readings (Full Reading and the compatibility re
 - **Cosmic card**: a shareable PNG (1:1 post or 9:16 story, night or dawn style) with the person's
   wheel, Big Three, Life Path, Chinese sign and nakshatra. Name and birth date are opt-in; birth time
   and place never appear. Download, native share on phones, or copy a caption.
-- **AI readings**: `src/app/api/reading/route.ts` streams a 12-section life reading or a compatibility
-  reading, plus follow-up Q&A, from Claude (`claude-opus-5-5`). The model only interprets
-  pre-computed data; it never calculates.
+- **AI readings**: a 12-section life reading or a compatibility reading, plus follow-up Q&A, written
+  by one of two engines. The model only interprets pre-computed data; it never calculates.
+  - **Gemini, with the visitor's own key** (`src/lib/gemini.ts`): on first use the site asks for a
+    free Gemini API key from Google AI Studio, checks it, and lets the visitor pick a model. The key
+    is stored only in their browser and sent only to Google, so this works on the static GitHub Pages
+    site and costs the site owner nothing.
+  - **Claude on a server** (`src/app/api/reading/route.ts`, `claude-opus-5-5`): used when the app runs
+    with a server and `ANTHROPIC_API_KEY` is set. Visitors can still switch to their own Gemini key.
+  Both use the same instructions in `src/lib/readingPrompt.ts`.
 
 Ephemeris: [Astronomy Engine](https://github.com/cosinekitty/astronomy) (MIT; no AGPL Swiss
 Ephemeris licence needed). Geocoding: Open-Meteo (free, no key). Timezones: IANA via Luxon,
@@ -56,7 +62,7 @@ Actions tab.
 To publish from your own machine instead (pushes to a `gh-pages` branch), run
 `npm run deploy:pages` and set Pages to "Deploy from a branch".
 
-On the static site the Full Reading tab shows a "coming soon" note; everything else runs in the
+On the static site, AI readings use each visitor's own Gemini key; everything else runs in the
 visitor's browser.
 
 ## Verify the math

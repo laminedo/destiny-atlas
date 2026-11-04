@@ -1,11 +1,16 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Markdown from "./Markdown";
+import GeminiKeyDialog from "./GeminiKeyDialog";
+import { SYSTEM_PROMPT, withChart, type ChatMessage } from "@/lib/readingPrompt";
+import {
+  forgetGeminiSettings, loadGeminiSettings, saveGeminiSettings, streamGeminiReading, type GeminiSettings,
+} from "@/lib/gemini";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = ChatMessage;
 
-// GitHub Pages builds have no server, so the reading API is unavailable there.
+// GitHub Pages builds have no server, so readings there need the visitor's own Gemini key.
 const STATIC_SITE = process.env.NEXT_PUBLIC_STATIC_EXPORT === "1";
 
 const LANGUAGES = ["English", "Français", "Español", "Português", "Deutsch", "Italiano", "العربية"];
@@ -46,12 +51,24 @@ export default function AiReading({
   const [error, setError] = useState<string | null>(null);
   const [question, setQuestion] = useState("");
   const abortRef = useRef<AbortController | null>(null);
+  const [gemini, setGemini] = useState<GeminiSettings | null>(null);
+  const [keyDialog, setKeyDialog] = useState(false);
+  // A request waiting for the visitor to connect a key; it runs once they save one.
+  const pendingRef = useRef<{ content: string; base: Msg[] } | null>(null);
+
+  useEffect(() => setGemini(loadGeminiSettings()), []);
 
   const save = (m: Msg[]) => {
     try { localStorage.setItem(storageKey, JSON.stringify(m)); } catch { /* storage unavailable */ }
   };
 
-  async function send(content: string, base: Msg[] = messages) {
+  async function send(content: string, base: Msg[] = messages, geminiOverride?: GeminiSettings) {
+    const useGemini = geminiOverride ?? gemini;
+    if (!useGemini && STATIC_SITE) {
+      pendingRef.current = { content, base };
+      setKeyDialog(true);
+      return;
+    }
     setError(null);
     setBusy(true);
     const history: Msg[] = [...base, { role: "user", content }];
@@ -60,6 +77,18 @@ export default function AiReading({
     abortRef.current = controller;
     let text = "";
     try {
+      if (useGemini) {
+        text = await streamGeminiReading({
+          settings: useGemini,
+          system: SYSTEM_PROMPT,
+          messages: withChart(chart, language, history),
+          onText: (t) => setMessages([...history, { role: "assistant", content: t }]),
+          signal: controller.signal,
+        });
+        if (text.trim()) save([...history, { role: "assistant", content: text }]);
+        else setMessages(base);
+        return;
+      }
       const res = await fetch("/api/reading", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -90,6 +119,43 @@ export default function AiReading({
     }
   }
 
+  const saveKey = (s: GeminiSettings) => {
+    saveGeminiSettings(s);
+    setGemini(s);
+    setKeyDialog(false);
+    const pending = pendingRef.current;
+    pendingRef.current = null;
+    if (pending) send(pending.content, pending.base, s);
+  };
+
+  const forgetKey = () => {
+    forgetGeminiSettings();
+    setGemini(null);
+  };
+
+  const dialog = keyDialog && (
+    <GeminiKeyDialog initial={gemini} onSave={saveKey} onClose={() => { pendingRef.current = null; setKeyDialog(false); }} />
+  );
+
+  const engineLine = (
+    <p className="no-print text-xs text-muted">
+      {gemini ? (
+        <>
+          Written by Gemini ({gemini.model.replace("models/", "")}) with your key ·{" "}
+          <button className="underline" onClick={() => setKeyDialog(true)}>change</button> ·{" "}
+          <button className="underline" onClick={forgetKey}>forget key</button>
+        </>
+      ) : STATIC_SITE ? (
+        <>Readings are written by Google Gemini using your own free API key. You&apos;ll be asked for it once.</>
+      ) : (
+        <>
+          Written by Claude ·{" "}
+          <button className="underline" onClick={() => setKeyDialog(true)}>use my own Gemini key instead</button>
+        </>
+      )}
+    </p>
+  );
+
   const reset = () => {
     abortRef.current?.abort();
     setMessages([]);
@@ -106,15 +172,11 @@ export default function AiReading({
           <select className="input w-auto" value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Reading language">
             {LANGUAGES.map((l) => <option key={l}>{l}</option>)}
           </select>
-          <button className="btn-primary" onClick={() => send(firstRequest, [])} disabled={busy || STATIC_SITE}>Generate my reading</button>
+          <button className="btn-primary" onClick={() => send(firstRequest, [])} disabled={busy}>Generate my reading</button>
         </div>
-        {STATIC_SITE && (
-          <p className="mx-auto mt-4 max-w-md rounded-xl bg-surface-2 p-3 text-sm text-muted">
-            AI-written readings are coming soon to this site. Everything else (your charts, numbers, forecast,
-            compatibility scores, and cosmic card) is calculated right here in your browser.
-          </p>
-        )}
+        <div className="mt-4">{engineLine}</div>
         {error && <p className="mt-4 text-sm text-hard">{error}</p>}
+        {dialog}
         <p className="mt-6 text-xs text-muted">Takes about 1–2 minutes. Readings are for self-reflection and entertainment, not medical, legal, or financial advice.</p>
       </div>
     );
@@ -155,7 +217,9 @@ export default function AiReading({
           <button className="btn-ghost" onClick={() => window.print()} disabled={busy}>Save as PDF</button>
           <button className="btn-ghost" onClick={reset}>Start over</button>
         </div>
+        {engineLine}
       </div>
+      {dialog}
     </div>
   );
 }
